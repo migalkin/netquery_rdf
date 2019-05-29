@@ -60,7 +60,7 @@ def run_train(model, optimizer, train_queries, val_queries, test_queries, logger
             logger.info("Edge converged at iteration {:d}".format(i - 1))
             logger.info("Testing at edge conv...")
             conv_test = run_eval(model, test_queries, i, logger)
-            conv_test = np.mean(conv_test.values())
+            conv_test = np.mean(list(conv_test.values()))
             edge_conv = True
             losses = []
             ema_loss = None

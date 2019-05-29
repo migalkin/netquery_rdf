@@ -97,8 +97,8 @@ def run_train(model, optimizer, train_queries, val_queries, test_queries, logger
                 vals.append(v["1-chain"])
 
     v = run_eval(model, test_queries, i, logger)
-    logger.info("Test macro-averaged val: {:f}".format(np.mean(v.values())))
-    logger.info("Improvement from edge conv: {:f}".format((np.mean(v.values()) - conv_test) / conv_test))
+    logger.info("Test macro-averaged val: {:f}".format(np.mean(list(v.values()))))
+    logger.info("Improvement from edge conv: {:f}".format((np.mean(list(v.values())) - conv_test) / conv_test))
 
 
 def run_batch(train_queries, enc_dec, iter_count, batch_size, hard_negatives=False):

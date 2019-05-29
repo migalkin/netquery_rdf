@@ -92,7 +92,7 @@ def run_train(model, optimizer, train_queries, val_queries, test_queries, logger
         if i >= val_every and i % val_every == 0:
             v = run_eval(model, val_queries, i, logger)
             if edge_conv:
-                vals.append(np.mean(v.values()))
+                vals.append(np.mean(list(v.values())))
             else:
                 vals.append(v["1-chain"])
 

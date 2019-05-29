@@ -49,10 +49,10 @@ def eval_auc_queries(test_queries, enc_dec, batch_size=1000, hard_negatives=Fals
             batch_queries = formula_queries[offset:max_index]
             if hard_negatives:
                 lengths = [1 for j in range(offset, max_index)]
-                negatives = [random.choice(formula_queries[j].hard_neg_samples) for j in xrange(offset, max_index)]
+                negatives = [random.choice(formula_queries[j].hard_neg_samples) for j in range(offset, max_index)]
             else:
                 lengths = [1 for j in range(offset, max_index)]
-                negatives = [random.choice(formula_queries[j].neg_samples) for j in xrange(offset, max_index)]
+                negatives = [random.choice(formula_queries[j].neg_samples) for j in range(offset, max_index)]
             offset += batch_size
 
             formula_labels.extend([1 for _ in range(len(lengths))])

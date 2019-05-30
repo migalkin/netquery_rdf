@@ -23,14 +23,15 @@ def run_eval(model, queries, iteration, logger, by_type=False):
     vals = {}
 
     def _print_by_rel(rel_aucs, logger):
-        for rels, auc in rel_aucs.iteritems():
+        for rels, auc in rel_aucs.items():
             logger.info(str(rels) + "\t" + str(auc))
 
-    for query_type in queries["one_neg"]:
-        auc, rel_aucs = eval_auc_queries(queries["one_neg"][query_type], model)
+    for query_type in queries["full_neg"]: # change to one_neg back
+        #auc, rel_aucs = eval_auc_queries(queries["one_neg"][query_type], model)
         perc = eval_perc_queries(queries["full_neg"][query_type], model)
-        vals[query_type] = auc
-        logger.info("{:s} val AUC: {:f} val perc {:f}; iteration: {:d}".format(query_type, auc, perc, iteration))
+        vals[query_type] = perc
+        #logger.info("{:s} val AUC: {:f} val perc {:f}; iteration: {:d}".format(query_type, auc, perc, iteration))
+        logger.info("{:s} val  val perc {:f}; iteration: {:d}".format(query_type, perc, iteration))
         if by_type:
             _print_by_rel(rel_aucs, logger)
         if "inter" in query_type:

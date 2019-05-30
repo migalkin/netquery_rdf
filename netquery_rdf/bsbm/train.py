@@ -33,9 +33,9 @@ if args.cuda:
 out_dims = {mode:args.embed_dim for mode in graph.relations}
 
 print("Loading edge data..")
-train_queries = load_queries_by_formula(args.data_dir + "/bsbm_queries_train_new.pkl")
-val_queries = load_test_queries_by_formula(args.data_dir + "/bsbm_queries_val_new.pkl")
-test_queries = load_test_queries_by_formula(args.data_dir + "/bsbm_queries_test_new.pkl")
+train_queries = load_queries_by_formula(args.data_dir + "/train_edges.pkl")
+val_queries = load_test_queries_by_formula(args.data_dir + "/val_edges.pkl")
+test_queries = load_test_queries_by_formula(args.data_dir + "/test_edges.pkl")
 
 # print("Loading query data..")
 # for i in range(2,4):

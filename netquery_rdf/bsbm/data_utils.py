@@ -64,19 +64,19 @@ def make_train_test_edge_data(data_dir):
     print("Getting negative samples...")
     val_test_edge_negsamples = [graph.get_negative_edge_samples(e, 100) for e in val_test_edges]
     print("Making and storing test queries.")
-    val_test_edge_queries = [Query(("1-chain", val_test_edges[i]), val_test_edge_negsamples[i], None, 100) for i in range(split_point)]
+    val_test_edge_queries = [Query(("1-chain", val_test_edges[i]), val_test_edge_negsamples[i], None, 100, keep_graph=True) for i in range(split_point)]
     val_split_point = int(0.1*len(val_test_edge_queries))
     val_queries = val_test_edge_queries[:val_split_point]
     test_queries = val_test_edge_queries[val_split_point:]
-    pickle.dump([q.serialize() for q in val_queries], open(data_dir+"/val_edges.pkl", "w"), protocol=pickle.HIGHEST_PROTOCOL)
-    pickle.dump([q.serialize() for q in test_queries], open(data_dir+"/test_edges.pkl", "w"), protocol=pickle.HIGHEST_PROTOCOL)
+    pickle.dump([q.serialize() for q in val_queries], open(data_dir+"/val_edges.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
+    pickle.dump([q.serialize() for q in test_queries], open(data_dir+"/test_edges.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
 
     print("Removing test edges...")
     graph.remove_edges(val_test_edges)
     print("Making and storing train queries.")
     train_edges = graph.get_all_edges()
-    train_queries = [Query(("1-chain", e), None, None) for e in train_edges]
-    pickle.dump([q.serialize() for q in train_queries], open(data_dir+"/train_edges.pkl", "w"), protocol=pickle.HIGHEST_PROTOCOL)
+    train_queries = [Query(("1-chain", e), None, None, keep_graph=True) for e in train_edges]
+    pickle.dump([q.serialize() for q in train_queries], open(data_dir+"/train_edges.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
 
 def _discard_negatives(file_name, small_prop=0.9):
     queries = pickle.load(open(file_name, "rb"))
@@ -109,6 +109,6 @@ def make_train_test_query_data(data_dir):
 
 if __name__ == "__main__":
     #make_train_test_query_data("/dfs/scratch0/nqe-bio/")
-    #make_train_test_edge_data("/dfs/scratch0/nqe-bio/")
+    make_train_test_edge_data("./bsbm_data")
     sample_new_clean("/dfs/scratch0/nqe-bio/")
     #clean_test()

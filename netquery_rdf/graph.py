@@ -176,10 +176,10 @@ class Graph():
         """
         edges = []
         random.seed(seed)
-        for rel, adjs in self.adj_lists.iteritems():
+        for rel, adjs in self.adj_lists.items():
             if rel in exclude_rels:
                 continue
-            for node, neighs in adjs.iteritems():
+            for node, neighs in adjs.items():
                 edges.extend([(node, rel, neigh) for neigh in neighs if neigh != -1])
         random.shuffle(edges)
         return edges
@@ -188,27 +188,39 @@ class Graph():
                             exclude_rels=set([])):
         random.seed(seed)
         edges = defaultdict(list)
-        for rel, adjs in self.adj_lists.iteritems():
+        for rel, adjs in self.adj_lists.items():
             if rel in exclude_rels:
                 continue
-            for node, neighs in adjs.iteritems():
+            for node, neighs in adjs.items():
                 edges[(rel,)].extend([(node, neigh) for neigh in neighs if neigh != -1])
 
     def get_negative_edge_samples(self, edge, num, rejection_sample=True):
+        all_targets = self._find_all_targets_by_start(edge[1], edge[2])
         if rejection_sample:
             neg_nodes = set([])
             counter = 0
-            while len(neg_nodes) < num:
+            # total_candidates = len(self.full_lists[edge[1][0]])
+            while len(neg_nodes) < num: # and len(neg_nodes) < total_candidates-1:
                 neg_node = random.choice(self.full_lists[edge[1][0]])
-                if not neg_node in self.adj_lists[_reverse_relation(edge[1])][edge[2]]:
+                #if not neg_node in self.adj_lists[_reverse_relation(edge[1])][edge[2]]:
+                if not neg_node in all_targets: # edge[2] -> edge[0] because no reversing
                     neg_nodes.add(neg_node)
                 counter += 1
                 if counter > 100 * num:
                     return self.get_negative_edge_samples(edge, num, rejection_sample=False)
         else:
-            neg_nodes = self.full_sets[edge[1][0]] - self.adj_lists[_reverse_relation(edge[1])][edge[2]]
+           # neg_nodes = self.full_sets[edge[1][0]] - self.adj_lists[_reverse_relation(edge[1])][edge[2]]
+           #neg_nodes = self.full_sets[edge[1][0]] - set(self.adj_lists[edge[1]][edge[0]])
+           neg_nodes = self.full_sets[edge[1][0]] - all_targets
         neg_nodes = list(neg_nodes) if len(neg_nodes) <= num else random.sample(list(neg_nodes), num)
         return neg_nodes
+
+    def _find_all_targets_by_start(self, pattern, start_node):
+        result = set()
+        for k in self.adj_lists[pattern]:
+            if start_node in self.adj_lists[pattern][k]:
+                result.add(k)
+        return result
 
     def sample_test_queries(self, train_graph, q_types, samples_per_type, neg_sample_max, verbose=True):
         queries = []

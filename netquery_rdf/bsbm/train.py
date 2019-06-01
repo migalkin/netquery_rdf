@@ -2,9 +2,10 @@ from argparse import ArgumentParser
 
 from netquery_rdf.utils import *
 from netquery_rdf.bsbm.data_utils import load_graph
-from netquery_rdf.data_utils import load_queries_by_formula, load_test_queries_by_formula
+from netquery_rdf.data_utils import load_queries_by_formula, load_test_queries_by_formula, load_qs
 from netquery_rdf.model import QueryEncoderDecoder
 from netquery_rdf.train_helpers import run_train
+import pickle
 
 from torch import optim
 
@@ -16,7 +17,7 @@ parser.add_argument("--depth", type=int, default=0)
 parser.add_argument("--batch_size", type=int, default=512)
 parser.add_argument("--max_iter", type=int, default=100000000)
 parser.add_argument("--max_burn_in", type=int, default=1000000)
-parser.add_argument("--val_every", type=int, default=5000)
+parser.add_argument("--val_every", type=int, default=500)
 parser.add_argument("--tol", type=float, default=0.0001)
 parser.add_argument("--cuda", action='store_true')
 parser.add_argument("--log_dir", type=str, default="./")
@@ -37,15 +38,16 @@ train_queries = load_queries_by_formula(args.data_dir + "/train_edges.pkl")
 val_queries = load_test_queries_by_formula(args.data_dir + "/val_edges.pkl")
 test_queries = load_test_queries_by_formula(args.data_dir + "/test_edges.pkl")
 
-# print("Loading query data..")
-# for i in range(2,4):
-#     train_queries.update(load_queries_by_formula(args.data_dir + "/train_queries_{:d}.pkl".format(i)))
-#     i_val_queries = load_test_queries_by_formula(args.data_dir + "/val_queries_{:d}.pkl".format(i))
-#     val_queries["one_neg"].update(i_val_queries["one_neg"])
-#     val_queries["full_neg"].update(i_val_queries["full_neg"])
-#     i_test_queries = load_test_queries_by_formula(args.data_dir + "/test_queries_{:d}.pkl".format(i))
-#     test_queries["one_neg"].update(i_test_queries["one_neg"])
-#     test_queries["full_neg"].update(i_test_queries["full_neg"])
+print("Loading query data..")
+for i in range(2,4):
+    #train_queries.update(load_queries_by_formula(args.data_dir + "/train_queries_{:d}.pkl".format(i)))
+    train_queries.update(load_qs(args.data_dir + "/train_queries_{:d}.pkl".format(i)))
+    i_val_queries = load_test_queries_by_formula(args.data_dir + "/val_queries_{:d}.pkl".format(i))
+    val_queries["one_neg"].update(i_val_queries["one_neg"])
+    val_queries["full_neg"].update(i_val_queries["full_neg"])
+    i_test_queries = load_test_queries_by_formula(args.data_dir + "/test_queries_{:d}.pkl".format(i))
+    test_queries["one_neg"].update(i_test_queries["one_neg"])
+    test_queries["full_neg"].update(i_test_queries["full_neg"])
 
 
 enc = get_encoder(args.depth, graph, out_dims, feature_modules, args.cuda)

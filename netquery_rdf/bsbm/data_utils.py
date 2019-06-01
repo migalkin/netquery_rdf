@@ -68,8 +68,8 @@ def make_train_test_edge_data(data_dir):
     val_split_point = int(0.1*len(val_test_edge_queries))
     val_queries = val_test_edge_queries[:val_split_point]
     test_queries = val_test_edge_queries[val_split_point:]
-    pickle.dump([q.serialize() for q in val_queries], open(data_dir+"/val_edges.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-    pickle.dump([q.serialize() for q in test_queries], open(data_dir+"/test_edges.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
+    pickle.dump([q.serialize() for q in val_queries if len(q.neg_samples) > 0], open(data_dir+"/val_edges.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
+    pickle.dump([q.serialize() for q in test_queries if len(q.neg_samples) > 0], open(data_dir+"/test_edges.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
 
     print("Removing test edges...")
     graph.remove_edges(val_test_edges)
@@ -95,8 +95,8 @@ def discard_negatives(data_dir):
 
 def make_train_test_query_data(data_dir):
     graph, _, _ = load_graph(data_dir, 10)
-    queries_2, queries_3 = parallel_sample(graph, 20, 50000, data_dir, test=False)
-    t_queries_2, t_queries_3 = parallel_sample(graph, 20, 5000, data_dir, test=True)
+    queries_2, queries_3 = parallel_sample(graph, 8, 10000, data_dir, test=False)
+    t_queries_2, t_queries_3 = parallel_sample(graph, 8, 1000, data_dir, test=True)
     t_queries_2 = list(set(t_queries_2) - set(queries_2))
     t_queries_3 = list(set(t_queries_3) - set(queries_3))
     pickle.dump([q.serialize() for q in queries_2], open(data_dir + "/train_queries_2.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
@@ -108,7 +108,7 @@ def make_train_test_query_data(data_dir):
 
 
 if __name__ == "__main__":
-    #make_train_test_query_data("/dfs/scratch0/nqe-bio/")
-    make_train_test_edge_data("./bsbm_data")
-    sample_new_clean("/dfs/scratch0/nqe-bio/")
+    # make_train_test_query_data("./bsbm_data")
+    #make_train_test_edge_data("./bsbm_data")
+    sample_new_clean("./bsbm_data")
     #clean_test()

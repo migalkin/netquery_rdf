@@ -117,9 +117,12 @@ class Graph():
         self.feature_dims = feature_dims
         self.relations = relations
         self.adj_lists = adj_lists
+        self.reverse_adj_lists = self._flip_adj_lists(adj_lists)
+        # self.adj_lists.update(self._flip_adj_lists(adj_lists))
         self.full_sets = defaultdict(set)
         self.full_lists = {}
         self.meta_neighs = defaultdict(dict)
+        self.reversed_meta_neighs = defaultdict(dict)
         for rel, adjs in self.adj_lists.items():
             full_set = set(self.adj_lists[rel].keys())
             self.full_sets[rel[0]] = self.full_sets[rel[0]].union(full_set)  # changed index from 0 to 2
@@ -163,7 +166,7 @@ class Graph():
                 continue
 
             try:
-                self.adj_lists[_reverse_relation(edge[1])][edge[-1]].remove(edge[0])
+                self.reverse_adj_lists[_reverse_relation(edge[1])][edge[-1]].remove(edge[0])
             except Exception:
                 continue
         self.meta_neighs = defaultdict(dict)
@@ -222,6 +225,18 @@ class Graph():
                 result.add(k)
         return result
 
+    def _flip_adj_lists(self, adjs):
+        ret = dict()
+        for rel in adjs:
+            new_rel = (rel[-1], rel[1], rel[0])
+            result = defaultdict(list)
+            for start_node in adjs[rel]:
+                end_nodes = adjs[rel][start_node]
+                for e in end_nodes:
+                    result[e].append(start_node)
+            ret[new_rel] = result
+        return ret
+
     def sample_test_queries(self, train_graph, q_types, samples_per_type, neg_sample_max, verbose=True):
         queries = []
         for q_type in q_types:
@@ -261,20 +276,25 @@ class Graph():
         if query[0] == "3-chain" or query[0] == "2-chain":
             edges = query[1:]
             rels = [_reverse_relation(edge[1]) for edge in edges[::-1]]
-            meta_neighs = self.get_metapath_neighs(query[-1][-1], tuple(rels))
-            negative_samples = self.full_sets[query[1][1][0]] - meta_neighs
+            #meta_neighs = self.get_metapath_neighs(query[-1][-1], tuple(rels))
+            meta_neighs = self.get_reversed_metapath_neighs(query[-1][-1], tuple(rels))
+            negative_samples = set(self.full_sets[query[1][1][0]]) - set(meta_neighs)
             if len(negative_samples) == 0:
                 return None, None
             else:
                 return negative_samples, None
         elif query[0] == "2-inter" or query[0] == "3-inter":
             rel_1 = _reverse_relation(query[1][1])
-            union_neighs = self.adj_lists[rel_1][query[1][-1]]
-            inter_neighs = self.adj_lists[rel_1][query[1][-1]]
+            # union_neighs = self.adj_lists[rel_1][query[1][-1]]
+            # inter_neighs = self.adj_lists[rel_1][query[1][-1]]
+            union_neighs = set(self.reverse_adj_lists[rel_1][query[1][-1]])
+            inter_neighs = set(self.reverse_adj_lists[rel_1][query[1][-1]])
             for i in range(2, len(query)):
                 rel = _reverse_relation(query[i][1])
-                union_neighs = union_neighs.union(self.adj_lists[rel][query[i][-1]])
-                inter_neighs = inter_neighs.intersection(self.adj_lists[rel][query[i][-1]])
+                # union_neighs = union_neighs.union(self.adj_lists[rel][query[i][-1]])
+                # inter_neighs = inter_neighs.intersection(self.adj_lists[rel][query[i][-1]])
+                union_neighs = union_neighs.union(set(self.reverse_adj_lists[rel][query[i][-1]]))
+                inter_neighs = inter_neighs.intersection(set(self.reverse_adj_lists[rel][query[i][-1]]))
             neg_samples = self.full_sets[query[1][1][0]] - inter_neighs
             hard_neg_samples = union_neighs - inter_neighs
             if len(neg_samples) == 0 or len(hard_neg_samples) == 0:
@@ -282,10 +302,13 @@ class Graph():
             return neg_samples, hard_neg_samples
         elif query[0] == "3-inter_chain":
             rel_1 = _reverse_relation(query[1][1])
-            union_neighs = self.adj_lists[rel_1][query[1][-1]]
-            inter_neighs = self.adj_lists[rel_1][query[1][-1]]
+            # union_neighs = self.adj_lists[rel_1][query[1][-1]]
+            # inter_neighs = self.adj_lists[rel_1][query[1][-1]]
+            union_neighs = set(self.reverse_adj_lists[rel_1][query[1][-1]])
+            inter_neighs = set(self.reverse_adj_lists[rel_1][query[1][-1]])
             chain_rels = [_reverse_relation(edge[1]) for edge in query[2][::-1]]
-            chain_neighs = self.get_metapath_neighs(query[2][-1][-1], tuple(chain_rels))
+            # chain_neighs = self.get_metapath_neighs(query[2][-1][-1], tuple(chain_rels))
+            chain_neighs = self.get_reversed_metapath_neighs(query[2][-1][-1], tuple(chain_rels))
             union_neighs = union_neighs.union(chain_neighs)
             inter_neighs = inter_neighs.intersection(chain_neighs)
             neg_samples = self.full_sets[query[1][1][0]] - inter_neighs
@@ -295,15 +318,19 @@ class Graph():
             return neg_samples, hard_neg_samples
         elif query[0] == "3-chain_inter":
             inter_rel_1 = _reverse_relation(query[-1][0][1])
-            inter_neighs_1 = self.adj_lists[inter_rel_1][query[-1][0][-1]]
+            #inter_neighs_1 = set(self.adj_lists[inter_rel_1][query[-1][0][-1]])
+            inter_neighs_1 = set(self.reverse_adj_lists[inter_rel_1][query[-1][0][-1]])
             inter_rel_2 = _reverse_relation(query[-1][1][1])
-            inter_neighs_2 = self.adj_lists[inter_rel_2][query[-1][1][-1]]
+            #inter_neighs_2 = set(self.adj_lists[inter_rel_2][query[-1][1][-1]])
+            inter_neighs_2 = set(self.reverse_adj_lists[inter_rel_2][query[-1][1][-1]])
 
             inter_neighs = inter_neighs_1.intersection(inter_neighs_2)
             union_neighs = inter_neighs_1.union(inter_neighs_2)
             rel = _reverse_relation(query[1][1])
-            pos_nodes = set([n for neigh in inter_neighs for n in self.adj_lists[rel][neigh]])
-            union_pos_nodes = set([n for neigh in union_neighs for n in self.adj_lists[rel][neigh]])
+            # pos_nodes = set([n for neigh in inter_neighs for n in self.adj_lists[rel][neigh]])
+            # union_pos_nodes = set([n for neigh in union_neighs for n in self.adj_lists[rel][neigh]])
+            pos_nodes = set([n for neigh in inter_neighs for n in self.reverse_adj_lists[rel][neigh]])
+            union_pos_nodes = set([n for neigh in union_neighs for n in self.reverse_adj_lists[rel][neigh]])
             neg_samples = self.full_sets[query[1][1][0]] - pos_nodes
             hard_neg_samples = union_pos_nodes - pos_nodes
             if len(neg_samples) == 0 or len(hard_neg_samples) == 0:
@@ -317,78 +344,83 @@ class Graph():
 
     def sample_query_subgraph_bytype(self, q_type, start_node=None):
         if start_node is None:
-            start_rel = random.choice(self.adj_lists.keys())
-            node = random.choice(self.adj_lists[start_rel].keys())
+            start_rel = random.choice(list(self.adj_lists.keys()))
+            node = random.choice(list(self.adj_lists[start_rel].keys()))
             mode = start_rel[0]
         else:
             node, mode = start_node
-
-        if q_type[0] == "3":
-            if q_type == "3-chain" or q_type == "3-chain_inter":
-                num_edges = 1
-            elif q_type == "3-inter_chain":
-                num_edges = 2
-            elif q_type == "3-inter":
-                num_edges = 3
-            if num_edges > len(self.flat_adj_lists[mode][node]):
-                return None
-            if num_edges == 1:
-                rel, neigh = random.choice(self.flat_adj_lists[mode][node])
-                edge = (node, rel, neigh)
-                next_query = self.sample_query_subgraph_bytype(
-                    "2-chain" if q_type == "3-chain" else "2-inter", start_node=(neigh, rel[0]))
-                if next_query is None:
+        try:
+            if q_type[0] == "3":
+                if q_type == "3-chain" or q_type == "3-chain_inter":
+                    num_edges = 1
+                elif q_type == "3-inter_chain":
+                    num_edges = 2
+                elif q_type == "3-inter":
+                    num_edges = 3
+                if num_edges > len(self.flat_adj_lists[mode][node]):
                     return None
-                if next_query[0] == "2-chain":
-                    return ("3-chain", edge, next_query[1], next_query[2])
-                else:
-                    return ("3-chain_inter", edge, (next_query[1], next_query[2]))
-            elif num_edges == 2:
-                rel_1, neigh_1 = random.choice(self.flat_adj_lists[mode][node])
-                edge_1 = (node, rel_1, neigh_1)
-                neigh_2 = neigh_1
-                rel_2 = rel_1
-                while (neigh_1, rel_1) == (neigh_2, rel_2):
-                    rel_2, neigh_2 = random.choice(self.flat_adj_lists[mode][node])
-                edge_2 = (node, rel_2, neigh_2)
-                return ("3-inter_chain", edge_1, (edge_2, self.sample_edge(neigh_2, rel_2[-1])))
-            elif num_edges == 3:
-                rel_1, neigh_1 = random.choice(self.flat_adj_lists[mode][node])
-                edge_1 = (node, rel_1, neigh_1)
-                neigh_2 = neigh_1
-                rel_2 = rel_1
-                while (rel_1, neigh_1) == (rel_2, neigh_2):
-                    rel_2, neigh_2 = random.choice(self.flat_adj_lists[mode][node])
-                edge_2 = (node, rel_2, neigh_2)
-                neigh_3 = neigh_1
-                rel_3 = rel_1
-                while ((rel_1, neigh_1) == (rel_3, neigh_3)) or ((rel_2, neigh_2) == (rel_3, neigh_3)):
-                    rel_3, neigh_3 = random.choice(self.flat_adj_lists[mode][node])
-                edge_3 = (node, rel_3, neigh_3)
-                return ("3-inter", edge_1, edge_2, edge_3)
+                if num_edges == 1:
+                    rel, neigh = random.choice(self.flat_adj_lists[mode][node])
+                    edge = (node, rel, neigh)
+                    next_query = self.sample_query_subgraph_bytype(
+                        "2-chain" if q_type == "3-chain" else "2-inter", start_node=(neigh, rel[2]))  # changed to 2
+                    if next_query is None:
+                        return None
+                    if next_query[0] == "2-chain":
+                        return ("3-chain", edge, next_query[1], next_query[2])
+                    else:
+                        return ("3-chain_inter", edge, (next_query[1], next_query[2]))
+                elif num_edges == 2:
+                    rel_1, neigh_1 = random.choice(self.flat_adj_lists[mode][node])
+                    edge_1 = (node, rel_1, neigh_1)
+                    neigh_2 = neigh_1
+                    rel_2 = rel_1
+                    while (neigh_1, rel_1) == (neigh_2, rel_2):
+                        rel_2, neigh_2 = random.choice(self.flat_adj_lists[mode][node])
+                    edge_2 = (node, rel_2, neigh_2)
+                    return ("3-inter_chain", edge_1, (edge_2, self.sample_edge(neigh_2, rel_2[-1])))
+                elif num_edges == 3:
+                    rel_1, neigh_1 = random.choice(self.flat_adj_lists[mode][node])
+                    edge_1 = (node, rel_1, neigh_1)
+                    neigh_2 = neigh_1
+                    rel_2 = rel_1
+                    while (rel_1, neigh_1) == (rel_2, neigh_2):
+                        rel_2, neigh_2 = random.choice(self.flat_adj_lists[mode][node])
+                    edge_2 = (node, rel_2, neigh_2)
+                    neigh_3 = neigh_1
+                    rel_3 = rel_1
+                    while ((rel_1, neigh_1) == (rel_3, neigh_3)) or ((rel_2, neigh_2) == (rel_3, neigh_3)):
+                        rel_3, neigh_3 = random.choice(self.flat_adj_lists[mode][node])
+                    edge_3 = (node, rel_3, neigh_3)
+                    return ("3-inter", edge_1, edge_2, edge_3)
 
-        if q_type[0] == "2":
-            num_edges = 1 if q_type == "2-chain" else 2
-            if num_edges > len(self.flat_adj_lists[mode][node]):
-                return None
-            if num_edges == 1:
-                rel, neigh = random.choice(self.flat_adj_lists[mode][node])
-                edge = (node, rel, neigh)
-                return ("2-chain", edge, self.sample_edge(neigh, rel[-1]))
-            elif num_edges == 2:
-                rel_1, neigh_1 = random.choice(self.flat_adj_lists[mode][node])
-                edge_1 = (node, rel_1, neigh_1)
-                neigh_2 = neigh_1
-                rel_2 = rel_1
-                while (neigh_1, rel_1) == (neigh_2, rel_2):
-                    rel_2, neigh_2 = random.choice(self.flat_adj_lists[mode][node])
-                edge_2 = (node, rel_2, neigh_2)
-                return ("2-inter", edge_1, edge_2)
+            if q_type[0] == "2":
+                num_edges = 1 if q_type == "2-chain" else 2
+                if num_edges > len(self.flat_adj_lists[mode][node]):
+                    return None
+                if num_edges == 1:
+                    rel, neigh = random.choice(self.flat_adj_lists[mode][node])
+                    edge = (node, rel, neigh)
+                    try:
+                        return ("2-chain", edge, self.sample_edge(neigh, rel[-1]))
+                    except Exception:
+                        return None
+                elif num_edges == 2:
+                    rel_1, neigh_1 = random.choice(self.flat_adj_lists[mode][node])
+                    edge_1 = (node, rel_1, neigh_1)
+                    neigh_2 = neigh_1
+                    rel_2 = rel_1
+                    while (neigh_1, rel_1) == (neigh_2, rel_2):
+                        rel_2, neigh_2 = random.choice(self.flat_adj_lists[mode][node])
+                    edge_2 = (node, rel_2, neigh_2)
+                    return ("2-inter", edge_1, edge_2)
+        except Exception:
+            return None
 
     def sample_query_subgraph(self, arity, start_node=None):
         if start_node is None:
-            start_rel = random.choice(self.adj_lists.keys())
-            node = random.choice(self.adj_lists[start_rel].keys())
+            start_rel = random.choice(list(self.adj_lists.keys()))
+            node = random.choice(list(self.adj_lists[start_rel].keys()))
             mode = start_rel[0]
         else:
             node, mode = start_node
@@ -406,10 +438,14 @@ class Graph():
                 next_query = self.sample_query_subgraph(2, start_node=(neigh, rel[0]))
                 if next_query is None:
                     return None
-                if next_query[0] == "2-chain":
-                    return ("3-chain", edge, next_query[1], next_query[2])
-                else:
-                    return ("3-chain_inter", edge, (next_query[1], next_query[2]))
+
+                try:
+                    if next_query[0] == "2-chain":
+                        return ("3-chain", edge, next_query[1], next_query[2])
+                    else:
+                        return ("3-chain_inter", edge, (next_query[1], next_query[2]))
+                except Exception:
+                    return None
             elif num_edges == 2:
                 rel_1, neigh_1 = random.choice(self.flat_adj_lists[mode][node])
                 edge_1 = (node, rel_1, neigh_1)
@@ -418,7 +454,10 @@ class Graph():
                 while (neigh_1, rel_1) == (neigh_2, rel_2):
                     rel_2, neigh_2 = random.choice(self.flat_adj_lists[mode][node])
                 edge_2 = (node, rel_2, neigh_2)
-                return ("3-inter_chain", edge_1, (edge_2, self.sample_edge(neigh_2, rel_2[-1])))
+                try:
+                    return ("3-inter_chain", edge_1, (edge_2, self.sample_edge(neigh_2, rel_2[-1])))
+                except Exception:
+                    return None
             elif num_edges == 3:
                 rel_1, neigh_1 = random.choice(self.flat_adj_lists[mode][node])
                 edge_1 = (node, rel_1, neigh_1)
@@ -441,7 +480,10 @@ class Graph():
             if num_edges == 1:
                 rel, neigh = random.choice(self.flat_adj_lists[mode][node])
                 edge = (node, rel, neigh)
-                return ("2-chain", edge, self.sample_edge(neigh, rel[-1]))
+                try:
+                    return ("2-chain", edge, self.sample_edge(neigh, rel[-1]))
+                except Exception:
+                    return None
             elif num_edges == 2:
                 rel_1, neigh_1 = random.choice(self.flat_adj_lists[mode][node])
                 edge_1 = (node, rel_1, neigh_1)
@@ -457,8 +499,22 @@ class Graph():
             return self.meta_neighs[rels][node]
         current_set = [node]
         for rel in rels:
+            # res = []
+            # for n in current_set:
+            #     for neigh in self.adj_lists[rel][n]:
+            #         res.append(neigh)
+            # current_set = set(res)
             current_set = set([neigh for n in current_set for neigh in self.adj_lists[rel][n]])
         self.meta_neighs[rels][node] = current_set
+        return current_set
+
+    def get_reversed_metapath_neighs(self, node, rels):
+        if node in self.meta_neighs[rels]:
+            return self.reversed_meta_neighs[rels][node]
+        current_set = [node]
+        for rel in rels:
+            current_set = set([neigh for n in current_set for neigh in self.reverse_adj_lists[rel][n]])
+        self.reversed_meta_neighs[rels][node] = current_set
         return current_set
 
     ## TESTING CODE
@@ -506,7 +562,9 @@ class Graph():
     def _is_negative(self, query, neg_node, is_hard):
         if query[0] == "2-chain":
             query = (query[0], (neg_node, query[1][1], query[1][2]), query[2])
+            # meta_neighs = self.get_metapath_neighs(query[1][0], (query[1][1], query[2][1]))
             if query[2][-1] in self.get_metapath_neighs(query[1][0], (query[1][1], query[2][1])):
+            # if query[2][-1] in meta_neighs:
                 return False
         if query[0] == "3-chain":
             query = (query[0], (neg_node, query[1][1], query[1][2]), query[2], query[3])
@@ -546,13 +604,21 @@ class Graph():
         if query[0] == "3-chain_inter":
             query = (query[0], (neg_node, query[1][1], query[1][2]), query[2])
             target_neigh = self.adj_lists[query[1][1]][neg_node]
-            neigh_1 = self.adj_lists[_reverse_relation(query[2][0][1])][query[2][0][-1]]
-            neigh_2 = self.adj_lists[_reverse_relation(query[2][1][1])][query[2][1][-1]]
+            # neigh_1 = self.adj_lists[_reverse_relation(query[2][0][1])][query[2][0][-1]]
+            # neigh_2 = self.adj_lists[_reverse_relation(query[2][1][1])][query[2][1][-1]]
+            neigh_1 = set(self.reverse_adj_lists[_reverse_relation(query[2][0][1])][query[2][0][-1]])
+            neigh_2 = set(self.reverse_adj_lists[_reverse_relation(query[2][1][1])][query[2][1][-1]])
+            # if not is_hard:
+            #     if target_neigh in neigh_1.intersection(neigh_2):
+            #         return False
+            # else:
+            #     if target_neigh in neigh_1.intersection(neigh_2) and not target_neigh in neigh_1.union(neigh_2):
+            #         return False
             if not is_hard:
-                if target_neigh in neigh_1.intersection(neigh_2):
+                if set(target_neigh).issubset(neigh_1.intersection(neigh_2)):
                     return False
             else:
-                if target_neigh in neigh_1.intersection(neigh_2) and not target_neigh in neigh_1.union(neigh_2):
+                if set(target_neigh).issubset(neigh_1.intersection(neigh_2)) and not set(target_neigh).issubset(neigh_1.union(neigh_2)):
                     return False
         return True
 

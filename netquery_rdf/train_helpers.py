@@ -26,8 +26,10 @@ def run_eval(model, queries, iteration, logger, by_type=False):
         for rels, auc in rel_aucs.items():
             logger.info(str(rels) + "\t" + str(auc))
 
-    for query_type in queries["full_neg"]: # change to one_neg back
-        #auc, rel_aucs = eval_auc_queries(queries["one_neg"][query_type], model)
+    for query_type in queries["one_neg"]: # change to one_neg back
+        if len(queries["one_neg"][query_type]) == 0:
+            continue
+        auc, rel_aucs = eval_auc_queries(queries["one_neg"][query_type], model)
         perc = eval_perc_queries(queries["full_neg"][query_type], model)
         vals[query_type] = perc
         #logger.info("{:s} val AUC: {:f} val perc {:f}; iteration: {:d}".format(query_type, auc, perc, iteration))
@@ -95,7 +97,8 @@ def run_train(model, optimizer, train_queries, val_queries, test_queries, logger
             if edge_conv:
                 vals.append(np.mean(list(v.values())))
             else:
-                vals.append(v["1-chain"])
+                #vals.append(v["1-chain"])
+                vals.append(np.mean(list(v.values())))
 
     v = run_eval(model, test_queries, i, logger)
     logger.info("Test macro-averaged val: {:f}".format(np.mean(list(v.values()))))
